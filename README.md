@@ -9,3 +9,4 @@ It contains multiple packages and configurations to simulate real-world mono rep
 - `package-b`: Another sample package that depends on `package-a`.
 - `package-c`: A package with its own set of dependencies and scripts.
 - `package-d`: A package to test build and deployment workflows.
+- `package-e`: A package to test testing frameworks and coverage reports.
