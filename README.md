@@ -6,3 +6,4 @@ It contains multiple packages and configurations to simulate real-world mono rep
 ## Packages
 
 - `package-a`: A sample package with basic functionality.
+- `package-b`: Another sample package that depends on `package-a`.
