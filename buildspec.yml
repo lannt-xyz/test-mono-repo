@@ -19,7 +19,7 @@ phases:
       - PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
       - echo "Prev commit=$PREV_COMMIT"
       - if [ -n "$PREV_COMMIT" ]; then CHANGED_LIST=$(git diff --name-only $PREV_COMMIT HEAD); else CHANGED_LIST=$(git ls-tree -r --name-only HEAD); fi
-      - echo "Changed files: $CHANGED_LIST"
+      - echo "Changed files => $CHANGED_LIST"
       - CHANGED_API=false
       - CHANGED_WEB=false
       - echo "$CHANGED_LIST" | grep -q '^api/' && CHANGED_API=true || true
