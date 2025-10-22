@@ -14,20 +14,25 @@ env:
 
 phases:
   install:
-    commands:
-      - echo START install
-      - PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-      - echo "Prev commit=$PREV_COMMIT"
-      - if [ -n "$PREV_COMMIT" ]; then CHANGED_LIST=$(git diff --name-only $PREV_COMMIT HEAD); else CHANGED_LIST=$(git ls-tree -r --name-only HEAD); fi
-      - echo "$CHANGED_LIST"
-      - CHANGED_API=false
-      - CHANGED_WEB=false
-      - echo "$CHANGED_LIST" | grep -q '^api/' && CHANGED_API=true || true
-      - echo "$CHANGED_LIST" | grep -q '^web/' && CHANGED_WEB=true || true
-      - [ "$FORCE_BUILD_API" = "true" ] && CHANGED_API=true || true
-      - [ "$FORCE_BUILD_WEB" = "true" ] && CHANGED_WEB=true || true
-      - echo "CHANGED_API=$CHANGED_API CHANGED_WEB=$CHANGED_WEB"
-      - if [ "$CHANGED_WEB" = "true" ]; then cd web && npm ci && cd -; else echo "Skip web install"; fi
+  commands:
+    - echo START install
+    - PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || { echo "Error: Unable to get previous commit"; exit 1; })
+    - echo "Prev commit=$PREV_COMMIT"
+    - if [ -n "$PREV_COMMIT" ]; then CHANGED_LIST=$(git diff --name-only $PREV_COMMIT HEAD); else CHANGED_LIST=$(git ls-tree -r --name-only HEAD); fi
+    - echo "Changed files: $CHANGED_LIST"
+    - CHANGED_API=false
+    - CHANGED_WEB=false
+    - echo "$CHANGED_LIST" | grep -q '^api/' && CHANGED_API=true || true
+    - echo "$CHANGED_LIST" | grep -q '^web/' && CHANGED_WEB=true || true
+    - [ "$FORCE_BUILD_API" = "true" ] && CHANGED_API=true || true
+    - [ "$FORCE_BUILD_WEB" = "true" ] && CHANGED_WEB=true || true
+    - echo "CHANGED_API=$CHANGED_API CHANGED_WEB=$CHANGED_WEB"
+    - if [ "$CHANGED_WEB" = "true" ]; then
+        cd web && npm ci || { echo "Error: npm ci failed"; exit 1; }
+        cd - || exit 1;
+      else
+        echo "Skip web install";
+      fi
 
   pre_build:
     commands:
