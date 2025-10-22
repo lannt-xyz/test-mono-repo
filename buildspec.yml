@@ -27,7 +27,7 @@ phases:
       - if [ "$FORCE_BUILD_API" = "true" ]; then CHANGED_API=true; fi
       - if [ "$FORCE_BUILD_WEB" = "true" ]; then CHANGED_WEB=true; fi
       - echo "CHANGED_API=$CHANGED_API CHANGED_WEB=$CHANGED_WEB"
-      - if [ "$CHANGED_WEB" = "true" ]; then cd web && npm ci || { echo "Error: npm ci failed"; exit 1; }; cd -; else echo "Skip web install"; fi
+      - if [ "$CHANGED_WEB" = "true" ]; then cd web && npm ci && cd -; else echo "Skip web install"; fi
 
   pre_build:
     commands:
