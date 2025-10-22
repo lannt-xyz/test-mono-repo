@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 644385348015.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=644385348015.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/hrms-api
+      - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo "Fetching CodeArtifact token..."
+      - export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --region $AWS_REGION --domain $AWS_DOMAIN --domain-owner $AWS_DOMAIN_OWNER --query authorizationToken --output text)
+
+  build:
+    commands:
+      - echo Build docker image...
+      - docker build --secret id=codeartifact,env=CODEARTIFACT_AUTH_TOKEN -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Writing imagedefinitions.json...
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+artifacts:
+  files:
+    - imagedefinitions.json

@@ -1,0 +1,35 @@
+[project]
+name = "hrms-api"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Nguyen Thanh Lan",email = "lan.nguyen@persol.co.jp"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi (>=0.117.1,<0.118.0)",
+    "uvicorn (>=0.37.0,<0.38.0)",
+    "pytest (>=8.4.2,<9.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+
+[[tool.poetry.source]]
+name = "codeartifact"
+url = "https://hrms-domain-644385348015.d.codeartifact.ap-northeast-1.amazonaws.com/pypi/hrms-repo/simple/"
+priority = "supplemental"
+
+[tool.poetry.dependencies]
+[tool.poetry]
+packages = [
+    { include = "app" }
+]
