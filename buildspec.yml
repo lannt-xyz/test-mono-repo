@@ -2,10 +2,8 @@ version: 0.2
 
 env:
   variables:
-    # Override thủ công nếu cần
     FORCE_BUILD_API: "false"
     FORCE_BUILD_WEB: "false"
-    # Các biến cho API (đặt trong Project hoặc Parameter Store)
     AWS_DEFAULT_REGION: "ap-southeast-1"
     AWS_REGION: "ap-southeast-1"
     AWS_DOMAIN: ""
@@ -13,127 +11,44 @@ env:
     CONTAINER_NAME: "hrms-api"
     ECR_ACCOUNT_ID: "644385348015"
     API_REPOSITORY_NAME: "hrms-api"
-  exported-variables:
-    - IMAGE_TAG
-    - REPOSITORY_URI
-    - CHANGED_API
-    - CHANGED_WEB
 
 phases:
   install:
     commands:
-      - echo "[INSTALL] Kiểm tra tool..."
-      - node -v || echo "Node phải có trong image CodeBuild (dùng standard:7.0 trở lên)."
-      - docker version || echo "Docker cần bật privileged mode."
-      - echo "[GIT] Lấy commit trước..."
+      - echo START install
       - PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-      - echo "Previous commit: $PREV_COMMIT"
-      - echo "[DETECT] Phát hiện file thay đổi..."
-      - |
-        if [ -n "$PREV_COMMIT" ]; then
-          CHANGED_LIST=$(git diff --name-only $PREV_COMMIT HEAD)
-        else
-          # Commit đầu tiên -> build cả hai
-          CHANGED_LIST=$(git ls-tree -r --name-only HEAD)
-        fi
-      - echo "Changed files:"
+      - echo "Prev commit=$PREV_COMMIT"
+      - if [ -n "$PREV_COMMIT" ]; then CHANGED_LIST=$(git diff --name-only $PREV_COMMIT HEAD); else CHANGED_LIST=$(git ls-tree -r --name-only HEAD); fi
       - echo "$CHANGED_LIST"
-      - |
-        if echo "$CHANGED_LIST" | grep -q '^api/'; then
-          CHANGED_API=true
-        else
-          CHANGED_API=false
-        fi
-      - |
-        if echo "$CHANGED_LIST" | grep -q '^web/'; then
-          CHANGED_WEB=true
-        else
-          CHANGED_WEB=false
-        fi
-      - |
-        if [ "$FORCE_BUILD_API" = "true" ]; then
-          CHANGED_API=true
-          echo "FORCE_BUILD_API=true -> ép build API."
-        fi
-      - |
-        if [ "$FORCE_BUILD_WEB" = "true" ]; then
-          CHANGED_WEB=true
-          echo "FORCE_BUILD_WEB=true -> ép build Web."
-        fi
-      - echo "CHANGED_API=$CHANGED_API"
-      - echo "CHANGED_WEB=$CHANGED_WEB"
+      - CHANGED_API=false
+      - CHANGED_WEB=false
+      - echo "$CHANGED_LIST" | grep -q '^api/' && CHANGED_API=true || true
+      - echo "$CHANGED_LIST" | grep -q '^web/' && CHANGED_WEB=true || true
+      - [ "$FORCE_BUILD_API" = "true" ] && CHANGED_API=true || true
+      - [ "$FORCE_BUILD_WEB" = "true" ] && CHANGED_WEB=true || true
+      - echo "CHANGED_API=$CHANGED_API CHANGED_WEB=$CHANGED_WEB"
+      - if [ "$CHANGED_WEB" = "true" ]; then cd web && npm ci && cd -; else echo "Skip web install"; fi
 
   pre_build:
     commands:
-      - |
-        if [ "$CHANGED_API" = "true" ]; then
-          echo "[API][ECR] Đăng nhập ECR..."
-          REPOSITORY_URI=${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${API_REPOSITORY_NAME}
-          IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
-          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
-          echo "[API][CodeArtifact] Lấy token..."
-          export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --region $AWS_REGION --domain $AWS_DOMAIN --domain-owner $AWS_DOMAIN_OWNER --query authorizationToken --output text)
-        else
-          echo "[API] Không thay đổi -> skip pre_build API."
-        fi
-      - |
-        if [ "$CHANGED_WEB" = "true" ]; then
-          echo "[WEB] Cài đặt dependencies..."
-          cd web
-          npm ci
-          cd -
-        else
-          echo "[WEB] Không thay đổi -> skip install web."
-        fi
+      - if [ "$CHANGED_API" = "true" ]; then echo "Login ECR"; REPOSITORY_URI=${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${API_REPOSITORY_NAME}; IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}; aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com; echo "Get CodeArtifact token"; export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --region $AWS_REGION --domain $AWS_DOMAIN --domain-owner $AWS_DOMAIN_OWNER --query authorizationToken --output text); else echo "Skip API pre_build"; fi
 
   build:
     commands:
-      - |
-        if [ "$CHANGED_API" = "true" ]; then
-          echo "[API] Build & push image..."
-          cd api
-          docker build --secret id=codeartifact,env=CODEARTIFACT_AUTH_TOKEN -t $REPOSITORY_URI:$IMAGE_TAG .
-          docker push $REPOSITORY_URI:$IMAGE_TAG
-          cd -
-        fi
-      - |
-        if [ "$CHANGED_WEB" = "true" ]; then
-          echo "[WEB] Build React app..."
-          cd web
-          npm run build
-          cd -
-        fi
+      - if [ "$CHANGED_API" = "true" ]; then cd api && docker build --secret id=codeartifact,env=CODEARTIFACT_AUTH_TOKEN -t $REPOSITORY_URI:$IMAGE_TAG . && docker push $REPOSITORY_URI:$IMAGE_TAG && cd -; fi
+      - if [ "$CHANGED_WEB" = "true" ]; then cd web && npm run build && cd -; fi
 
   post_build:
     commands:
-      - |
-        if [ "$CHANGED_API" = "true" ]; then
-          echo "[API] Tạo imagedefinitions.json..."
-          printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-        else
-          echo "[API] Skip tạo imagedefinitions.json."
-        fi
-      - |
-        if [ "$CHANGED_WEB" = "true" ]; then
-          echo "[WEB] Sẵn sàng upload build/ lên S3 (CodePipeline deploy stage)."
-        else
-          echo "[WEB] Skip artifact web."
-        fi
+      - if [ "$CHANGED_API" = "true" ]; then printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > api/imagedefinitions.json; fi
+      - if [ "$CHANGED_WEB" = "true" ]; then echo "Web build ready for S3 deploy"; fi
 
 artifacts:
   files:
     - api/imagedefinitions.json
     - web/build/**/*
   discard-paths: no
-  name: build-output
 
 cache:
   paths:
     - 'web/node_modules/**/*'
-
-reports:
-  # (Tuỳ chọn) có thể thêm báo cáo test sau này
-  # web-tests:
-  #   files:
-  #     - web/test-results/*.xml
-  #   file-format: JUNIT
