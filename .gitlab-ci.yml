@@ -1,0 +1,72 @@
+stages:
+  - upload-to-s3
+
+# Job để upload API lên bucket S3
+upload_api_to_s3:
+  stage: upload-to-s3
+  script:
+    # Cài đặt AWS CLI nếu chưa có
+    - echo "Installing AWS CLI..."
+    - apt-get update
+    - apt-get install -y awscli
+
+    # Cấu hình AWS CLI với các biến môi trường
+    - echo "Configuring AWS CLI..."
+    - aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    - aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    - aws configure set default.region "$AWS_REGION"
+
+    # Tạo file metadata.json
+    - echo "Generating metadata.json for API..."
+    - export COMMIT_HASH=$(git rev-parse HEAD)
+    - export TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - cat <<EOT > metadata.json
+      {
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit_hash": "$COMMIT_HASH",
+        "timestamp": "$TIMESTAMP"
+      }
+      EOT
+
+    # Upload API code lên S3 bucket
+    - echo "Uploading API code to S3 bucket..."
+    - aws s3 sync ./api/ s3://hrms-source-repo/api/$CI_COMMIT_REF_NAME/$COMMIT_HASH/
+
+  only:
+    - main
+    - develop
+
+# Job để upload Web lên bucket S3
+upload_web_to_s3:
+  stage: upload-to-s3
+  script:
+    # Cài đặt AWS CLI nếu chưa có
+    - echo "Installing AWS CLI..."
+    - apt-get update
+    - apt-get install -y awscli
+
+    # Cấu hình AWS CLI với các biến môi trường
+    - echo "Configuring AWS CLI..."
+    - aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    - aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    - aws configure set default.region "$AWS_REGION"
+
+    # Tạo file metadata.json
+    - echo "Generating metadata.json for Web..."
+    - export COMMIT_HASH=$(git rev-parse HEAD)
+    - export TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - cat <<EOT > metadata.json
+      {
+        "branch": "$CI_COMMIT_REF_NAME",
+        "commit_hash": "$COMMIT_HASH",
+        "timestamp": "$TIMESTAMP"
+      }
+      EOT
+
+    # Upload Web code lên S3 bucket
+    - echo "Uploading Web code to S3 bucket..."
+    - aws s3 sync ./web/ s3://hrms-source-repo/web/$CI_COMMIT_REF_NAME/$COMMIT_HASH/
+
+  only:
+    - main
+    - develop
