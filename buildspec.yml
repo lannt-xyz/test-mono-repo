@@ -24,8 +24,8 @@ phases:
     - CHANGED_WEB=false
     - echo "$CHANGED_LIST" | grep -q '^api/' && CHANGED_API=true || true
     - echo "$CHANGED_LIST" | grep -q '^web/' && CHANGED_WEB=true || true
-    - [ "$FORCE_BUILD_API" = "true" ] && CHANGED_API=true || true
-    - [ "$FORCE_BUILD_WEB" = "true" ] && CHANGED_WEB=true || true
+    - '[ "$FORCE_BUILD_API" = "true" ] && CHANGED_API=true || true'
+    - '[ "$FORCE_BUILD_WEB" = "true" ] && CHANGED_WEB=true || true'
     - echo "CHANGED_API=$CHANGED_API CHANGED_WEB=$CHANGED_WEB"
     - if [ "$CHANGED_WEB" = "true" ]; then
         cd web && npm ci || { echo "Error: npm ci failed"; exit 1; }
