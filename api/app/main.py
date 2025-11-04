@@ -1,15 +1,13 @@
 import uvicorn
 
 from fastapi import FastAPI
-from common import date_utils
 
 app = FastAPI()
 
 @app.get("/welcome")
 def health():
     return {
-        "status": "ok nha!!",
-        "date": date_utils.from_string("2023-01-01")
+        "status": "ok nha!!"
     }
 
 if __name__ == "__main__":
