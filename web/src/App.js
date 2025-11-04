@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 
 import './App.css';
 
+const API_BASE = process.env.REACT_APP_API_BASE;
+
 function App() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('https://d23id7adr2qfre.cloudfront.net/dev/hms-api/health')
+        fetch(`${API_BASE}/health`)
             .then((response) => response.json())
             .then((data) => {
                 setData(data);
