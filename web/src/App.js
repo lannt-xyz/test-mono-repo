@@ -9,7 +9,7 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`${API_BASE}/health`)
+        fetch(`${API_BASE}/welcome`)
             .then((response) => response.json())
             .then((data) => {
                 setData(data);
