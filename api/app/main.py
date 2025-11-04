@@ -5,7 +5,7 @@ from common import date_utils
 
 app = FastAPI()
 
-@app.get("/health")
+@app.get("/welcome")
 def health():
     return {
         "status": "ok nha!!",
